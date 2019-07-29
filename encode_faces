@@ -1,0 +1,37 @@
+import face_recognition
+import argparse
+import pickle
+import cv2
+import os
+from imutils import paths
+
+train_dir = 'data/images'
+encoding_dir = 'encoding.pkl'
+
+
+
+print("[INFO] quantifying faces...")
+imagePaths = list(paths.list_images(train_dir))
+faceDescriptors = []
+nameLabels = []
+for (i, imagePath) in enumerate(imagePaths):
+
+  print("[INFO] processing image {}-{}/{} ".format(i + 1,imagePath,
+      len(imagePaths)))
+  # read image and convert it to RGB
+  img = cv2.imread(imagePath)
+  img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+  boxes = face_recognition.face_locations(img,model='hog')
+  # compute the facial embedding for the face
+  encodings = face_recognition.face_encodings(img, boxes)
+  # extract the person name from the image path
+  name = imagePath.split(os.path.sep)[-2]
+  for encoding in encodings:
+      faceDescriptors.append(encoding)
+      nameLabels.append(name)
+
+print("[INFO] serializing encodings...")
+data = {"face descriptors": faceDescriptors, "names": nameLabels}
+f = open('encoding.pkl', "wb")
+f.write(pickle.dumps(data))
+f.close()
