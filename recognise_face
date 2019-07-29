@@ -1,0 +1,59 @@
+import face_recognition
+import argparse
+import pickle
+import cv2
+
+encoding_dir = 'encoding.pkl'
+test_image = 'data/test_images/images-4.jpeg'
+
+print("[INFO] loading encodings...")
+data = pickle.loads(open(encoding_dir, "rb").read())
+image = cv2.imread(test_image)
+image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+print("[INFO] recognizing faces...")
+
+'''
+Detect faces and compute embeddings for each face
+'''
+boxes = face_recognition.face_locations(image,
+                                        model='hog')
+encodings = face_recognition.face_encodings(image, boxes)
+
+'''
+initialize the list of names for each face detected
+'''
+names = []
+
+
+for encoding in encodings:
+    '''
+    compare test image encoding to trained encodings loaded from pickle file
+    '''
+    matches = face_recognition.compare_faces(data["face descriptors"],encoding)
+    name="Unknown"
+
+    if True in matches:
+        '''
+        find the indexes of all matched faces and create a dictionary to increment the count when face found a match
+        '''
+        matchedIdxs = [i for (i, b) in enumerate(matches) if b]
+        counts = {}
+        for i in matchedIdxs:
+            name = data["names"][i]
+            counts[name] = counts.get(name, 0) + 1
+        name = max(counts, key=counts.get)
+
+    names.append(name)
+
+for ((top, right, bottom, left), name) in zip(boxes, names):
+    # draw the predicted face name on the image
+    cv2.rectangle(image, (left, top), (right, bottom), (0, 255, 0), 2)
+    y = top - 15 if top - 15 > 15 else top-5
+    cv2.putText(image, name, (left, y), cv2.FONT_HERSHEY_SIMPLEX,
+                0.5, (255, 255, 0), 1)
+
+# show the output image
+cv2.imshow("Image", image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
